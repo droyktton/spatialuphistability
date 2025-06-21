@@ -8,7 +8,8 @@ set zlabel 'log(floquet multiplier)'
 set view map
 set pm3d map
 set pm3d implicit  # assumes grid structure from x/y but data is unsorted
+set cbrange [0:10]
 
-splot 'rk4_k_sweep.txt' using 2:1:(log(($3>$4)?(($3>1)?($3):(0)):(($4>1)?($4):(0)))) with pm3d notitle
+splot [1:7.5][0:2] 'rk4_k_sweep.txt' using 2:1:(log(($3>$4)?(($3>1)?($3):(0)):(($4>1)?($4):(0)))) with pm3d notitle
 
 #splot 'data.txt' using 2:1:(log($3)) with pm3d notitle
