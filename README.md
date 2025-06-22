@@ -9,7 +9,7 @@ Use it at your own risk.
 
 If you use this code for your research or projects, please cite this repository:
 
-[URL](https://github.com/droyktton/spatialuphistability)]
+[URL](https://github.com/droyktton/spatialuphistability)
 
 Example citation:
 
