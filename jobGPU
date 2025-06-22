@@ -1,0 +1,71 @@
+#! /bin/bash
+#
+# Este script puede usarse para lanzar un proceso de gpu
+# Se especifica la cola gpu, se solicita una gpu y se solicita 1G RAM para el proceso
+#
+# Para lanzarlo copielo a un directorio en su home y en ese directorio ejecute:
+# qsub ejemploGPU
+#
+# Los procesos en la cola gpu tienen una duración máxima de 3 días
+# Los procesos en la cola gpushort tienen una duración máxima de 20 minutos
+#
+# El sistema de cola devuelve una variable $SGE_GPU que contiene los IDs de los dispositivos requeridos (separados por coma). Ejemplo: 0 o 0,1 dependiendo del numero de recursos pedidos
+# Use este device ID para cudaSetDevice()
+#
+# 
+# Las lineas que comienzan con #$ son opciones para el sistema de cola
+# Todas explicadas en el man qsub
+#
+#$ -cwd
+#$ -j y
+#$ -S /bin/bash
+#$ -q gpushort
+#$ -l gpu=1
+#$ -l memoria_a_usar=1G
+#$ -N uphilin
+#$ -t 1-100 # Setea el array de indices
+
+#
+#cargar variables de entorno para encontrar cuda
+
+module load cuda/11.4.0 gcc/8.2.0
+
+hostname
+
+alpha=$(echo $SGE_TASK_ID*0.01 | bc -l)
+echo $alpha
+
+dir="run_alpha"$alpha
+mkdir $dir
+
+cd $dir
+
+# ../spatialuphistability H0, H1, NH, k0, k1, Nk, alpha, C, dt
+ 
+../spatialuphistability 1.0001 7.500 500 0.0 2.0 500 $alpha 1.0 0.0001 
+gnuplot -e "alpha=$alpha" ../vermapa.gnu;         
+
+cd ../
+
+
+#./spatialuphistability 1.0001 7.500 2000 0.0 2.0 2000 0.27 1.0 0.0001 
+#if(argc>1) hstart = atof(argv[1]);
+#    if(argc>2) hend = atof(argv[2]);
+#    if(argc>3) Nh = atoi(argv[3]);
+#    if(argc>4) kstart = atof(argv[4]);
+#    if(argc>5) kend = atof(argv[5]);
+#    if(argc>6) Nk = atoi(argv[6]);
+#    double alpha = 0.27;
+#    double C = 1.0;
+#    double phi_start = 0.0;
+#    double phi_end = M_PI;
+#    double h = 0.001;
+#    int steps = (phi_end - phi_start) / h;
+#    if(argc>7) alpha = atof(argv[7]);	
+#    if(argc>8) C = atof(argv[8]);	
+#    if(argc>9) h = atof(argv[9]);	
+
+#for((seed=$SGE_TASK_ID;seed<=$SGE_TASK_ID; seed++))
+#do 
+#done 
+
