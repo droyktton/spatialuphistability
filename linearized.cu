@@ -31,7 +31,12 @@ struct MyParams {
     int steps;
 };
 
+
 __constant__ MyParams d_params;
+
+#ifdef RK45_ADAPTIVE
+__device__ int rk45_adaptive_solver_steps;
+#endif
 
 //#define RK4
 
@@ -276,6 +281,7 @@ __device__ void rk45_adaptive_solver(
 
     double k_Q[7], k_Phi[7];
 
+    int steps = 0; // Initialize step counter
     while (varphi < varphi_end) {
         // Stage 1
         rhs(varphi, Q, Phi, k, k_Q[0], k_Phi[0], H);
@@ -353,8 +359,10 @@ __device__ void rk45_adaptive_solver(
         // Prevent overshooting
         if (varphi + h > varphi_end)
             h = varphi_end - varphi;
+        
+        steps++; // Increment step count
     }
-
+    atomicMax(&rk45_adaptive_solver_steps, steps); // Update the number of steps taken
     final_Q = Q;
     final_Phi = Phi;
 }
@@ -556,6 +564,12 @@ int main(int argc, char **argv) {
     MyParams h_params = {alpha, C, h, phi_start, phi_end, steps};  // initialize on host
     cudaMemcpyToSymbol(d_params, &h_params, sizeof(MyParams));
 
+    #ifdef RK45_ADAPTIVE
+    //cudaMemcpyToSymbol(symbol, src_ptr, size, offset, cudaMemcpyHostToDevice);
+    int h_rk45_adaptive_solver_steps = 1; // Initialize to 1 to avoid division by zero in the kernel
+    cudaMemcpyToSymbol(rk45_adaptive_solver_steps, &h_rk45_adaptive_solver_steps, sizeof(int));
+    #endif
+
     std::cout << "hstart = " << hstart << std::endl;
     std::cout << "hend = " << hend << std::endl;
     std::cout << "Nh = " << Nh << std::endl;
@@ -655,5 +669,12 @@ int main(int argc, char **argv) {
  
     fclose(f);
     printf("Results saved to rk4_k_sweep.txt\n");
+    
+    #ifdef RK45_ADAPTIVE
+    //cudaMemcpyFromSymbol(dest_ptr, symbol, size, offset, cudaMemcpyDeviceToHost);
+    cudaMemcpyFromSymbol(&h_rk45_adaptive_solver_steps, rk45_adaptive_solver_steps, sizeof(int));
+    std::cout << "RK45 Adaptive solver steps taken: " << h_rk45_adaptive_solver_steps << std::endl;    
+    #endif
+
     return 0;
 }
