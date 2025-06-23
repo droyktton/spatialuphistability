@@ -266,7 +266,7 @@ __device__ void rk45_adaptive_solver(
     const double MAX_SCALE = 5.0;
 
     // Dormand–Prince coefficients
-    const double b1 = 35.0/384.0, b2 = 0.0, b3 = 500.0/1113.0,
+    const double b1 = 35.0/384.0, b3 = 500.0/1113.0,
                  b4 = 125.0/192.0, b5 = -2187.0/6784.0, b6 = 11.0/84.0;
 
     const double b1s = 5179.0/57600.0, b3s = 7571.0/16695.0,
@@ -276,7 +276,6 @@ __device__ void rk45_adaptive_solver(
     const double c2 = 1.0/5.0, c3 = 3.0/10.0, c4 = 4.0/5.0, c5 = 8.0/9.0;
 
     double k_Q[7], k_Phi[7];
-    double Qt, Phit;
 
     while (varphi < varphi_end) {
         // Stage 1
@@ -544,6 +543,17 @@ int main(int argc, char **argv) {
 
     int steps = (phi_end - phi_start) / h;
 
+    /*
+    struct MyParams {
+        double alpha;
+        double C;
+        double h;
+        double phi_start;
+        double phi_end;
+        int steps;
+    };
+    */
+
     MyParams h_params = {alpha, C, h, phi_start, phi_end, steps};  // initialize on host
     cudaMemcpyToSymbol(d_params, &h_params, sizeof(MyParams));
 
@@ -569,20 +579,6 @@ int main(int argc, char **argv) {
     #elif defined(RK45_ADAPTIVE)
     std::cout << "Using RK45 Adaptive solver" << std::endl;
     #endif
-
-
-/*
-struct MyParams {
-    double alpha;
-    double C;
-    double h;
-    double phi_start;
-    double phi_end;
-    int steps;
-};
-*/
-
-
     	
     thrust::host_vector<double> h_k_vals(Nk);
     thrust::host_vector<double> h_H_vals(Nh);
