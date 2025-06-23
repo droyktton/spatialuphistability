@@ -456,7 +456,7 @@ __device__ void ode_solver(double k, double& final_Q, double& final_Phi, double 
     #elif defined(RK45)
     rk45_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
     #elif defined(RK45_ADAPTIVE)
-    rk45_adaptive_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H, 1.e-6, 1.e-10);
+    rk45_adaptive_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H, TOL, TIMESTEP);
     #endif
 }
 

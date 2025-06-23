@@ -14,7 +14,7 @@ FLAGS = --expt-extended-lambda -lcufft -std=c++14 -lstdc++fs \
 #-gencode arch=compute_89,code=sm_89 
 
 
-PARAMS = -DRK45_ADAPTIVE -DTOL=1.e-6 -DTIMESTEP=1.e-8 #-DRK4 #-DRK45 # #   
+PARAMS = -DRK45_ADAPTIVE -DTOL=1.e-3 -DTIMESTEP=1.e-12 #-DRK4 #-DRK45 # #   
 
 LDFLAGS = -L/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/math_libs/12.2/lib64 
 
