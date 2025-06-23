@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <thrust/copy.h>
+
 void checkCudaError(cudaError_t err, const char* msg) {
     if (err != cudaSuccess) {
         std::cerr << "CUDA error: " << msg << " - " << cudaGetErrorString(err) << std::endl;
@@ -151,7 +152,7 @@ __device__ void rk6_solver(double k, double& final_Q, double& final_Phi, double 
         rhs(varphi + h * a6, Qt, Phit, k, k_Q[5], k_Phi[5],H);
 
         Q += h * (b1 * k_Q[0] + b4 * k_Q[3] + b5 * k_Q[4]);
-        Phi += h * (b1 * k_Phi[0] + b4 * k_Phi[3] + b5 * k_Phi[4],H);
+        Phi += h * (b1 * k_Phi[0] + b4 * k_Phi[3] + b5 * k_Phi[4]);
 
         varphi += h;
     }
@@ -160,15 +161,14 @@ __device__ void rk6_solver(double k, double& final_Q, double& final_Phi, double 
     final_Phi = Phi;
 }
 
+
 __device__ void rk45_solver(
     double k, double& final_Q, double& final_Phi,
     double initial_Q, double initial_Phi, double H
 ) {
-
-    double h = d_params.h;
-    double phi_start = d_params.phi_start;    	
-    //double phi_end = d_params.phi_end;    	
-    int steps = d_params.steps;    	
+    const double h = d_params.h;
+    const double phi_start = d_params.phi_start;
+    const int steps = d_params.steps;
 
     double Q = initial_Q, Phi = initial_Phi;
     double varphi = phi_start;
@@ -177,66 +177,65 @@ __device__ void rk45_solver(
     double Qt, Phit;
 
     for (int i = 0; i < steps; ++i) {
-        // c values (nodes)
-        double c2 = 1.0 / 5.0;
-        double c3 = 3.0 / 10.0;
-        double c4 = 4.0 / 5.0;
-        double c5 = 8.0 / 9.0;
-        double c6 = 1.0;
-        double c7 = 1.0;
-
-        // a coefficients
-        // Stage 1 (no a's)
-        rhs(varphi, Q, Phi, k, k_Q[0], k_Phi[0],H);
+        // Stage 1
+        rhs(varphi, Q, Phi, k, k_Q[0], k_Phi[0], H);
 
         // Stage 2
         Qt = Q + h * (1.0 / 5.0) * k_Q[0];
         Phit = Phi + h * (1.0 / 5.0) * k_Phi[0];
-        rhs(varphi + c2 * h, Qt, Phit, k, k_Q[1], k_Phi[1],H);
+        rhs(varphi + h * 1.0 / 5.0, Qt, Phit, k, k_Q[1], k_Phi[1], H);
 
         // Stage 3
-        Qt = Q + h * (3.0/40.0 * k_Q[0] + 9.0/40.0 * k_Q[1]);
-        Phit = Phi + h * (3.0/40.0 * k_Phi[0] + 9.0/40.0 * k_Phi[1]);
-        rhs(varphi + c3 * h, Qt, Phit, k, k_Q[2], k_Phi[2],H);
+        Qt = Q + h * (3.0 / 40.0 * k_Q[0] + 9.0 / 40.0 * k_Q[1]);
+        Phit = Phi + h * (3.0 / 40.0 * k_Phi[0] + 9.0 / 40.0 * k_Phi[1]);
+        rhs(varphi + h * 3.0 / 10.0, Qt, Phit, k, k_Q[2], k_Phi[2], H);
 
         // Stage 4
-        Qt = Q + h * (44.0/45.0 * k_Q[0] - 56.0/15.0 * k_Q[1] + 32.0/9.0 * k_Q[2]);
-        Phit = Phi + h * (44.0/45.0 * k_Phi[0] - 56.0/15.0 * k_Phi[1] + 32.0/9.0 * k_Phi[2]);
-        rhs(varphi + c4 * h, Qt, Phit, k, k_Q[3], k_Phi[3],H);
+        Qt = Q + h * (44.0 / 45.0 * k_Q[0] - 56.0 / 15.0 * k_Q[1] + 32.0 / 9.0 * k_Q[2]);
+        Phit = Phi + h * (44.0 / 45.0 * k_Phi[0] - 56.0 / 15.0 * k_Phi[1] + 32.0 / 9.0 * k_Phi[2]);
+        rhs(varphi + h * 4.0 / 5.0, Qt, Phit, k, k_Q[3], k_Phi[3], H);
 
         // Stage 5
-        Qt = Q + h * (19372.0/6561.0 * k_Q[0] - 25360.0/2187.0 * k_Q[1]
-                   + 64448.0/6561.0 * k_Q[2] - 212.0/729.0 * k_Q[3]);
-        Phit = Phi + h * (19372.0/6561.0 * k_Phi[0] - 25360.0/2187.0 * k_Phi[1]
-                   + 64448.0/6561.0 * k_Phi[2] - 212.0/729.0 * k_Phi[3]);
-        rhs(varphi + c5 * h, Qt, Phit, k, k_Q[4], k_Phi[4],H);
+        Qt = Q + h * (
+            19372.0 / 6561.0 * k_Q[0] - 25360.0 / 2187.0 * k_Q[1]
+            + 64448.0 / 6561.0 * k_Q[2] - 212.0 / 729.0 * k_Q[3]);
+        Phit = Phi + h * (
+            19372.0 / 6561.0 * k_Phi[0] - 25360.0 / 2187.0 * k_Phi[1]
+            + 64448.0 / 6561.0 * k_Phi[2] - 212.0 / 729.0 * k_Phi[3]);
+        rhs(varphi + h * 8.0 / 9.0, Qt, Phit, k, k_Q[4], k_Phi[4], H);
 
         // Stage 6
-        Qt = Q + h * (9017.0/3168.0 * k_Q[0] - 355.0/33.0 * k_Q[1]
-                   + 46732.0/5247.0 * k_Q[2] + 49.0/176.0 * k_Q[3]
-                   - 5103.0/18656.0 * k_Q[4]);
-        Phit = Phi + h * (9017.0/3168.0 * k_Phi[0] - 355.0/33.0 * k_Phi[1]
-                   + 46732.0/5247.0 * k_Phi[2] + 49.0/176.0 * k_Phi[3]
-                   - 5103.0/18656.0 * k_Phi[4]);
-        rhs(varphi + c6 * h, Qt, Phit, k, k_Q[5], k_Phi[5],H);
+        Qt = Q + h * (
+            9017.0 / 3168.0 * k_Q[0] - 355.0 / 33.0 * k_Q[1]
+            + 46732.0 / 5247.0 * k_Q[2] + 49.0 / 176.0 * k_Q[3]
+            - 5103.0 / 18656.0 * k_Q[4]);
+        Phit = Phi + h * (
+            9017.0 / 3168.0 * k_Phi[0] - 355.0 / 33.0 * k_Phi[1]
+            + 46732.0 / 5247.0 * k_Phi[2] + 49.0 / 176.0 * k_Phi[3]
+            - 5103.0 / 18656.0 * k_Phi[4]);
+        rhs(varphi + h, Qt, Phit, k, k_Q[5], k_Phi[5], H);
 
         // Stage 7
-        Qt = Q + h * (35.0/384.0 * k_Q[0] + 0.0 * k_Q[1] + 500.0/1113.0 * k_Q[2]
-                   + 125.0/192.0 * k_Q[3] - 2187.0/6784.0 * k_Q[4]
-                   + 11.0/84.0 * k_Q[5]);
-        Phit = Phi + h * (35.0/384.0 * k_Phi[0] + 0.0 * k_Phi[1] + 500.0/1113.0 * k_Phi[2]
-                   + 125.0/192.0 * k_Phi[3] - 2187.0/6784.0 * k_Phi[4]
-                   + 11.0/84.0 * k_Phi[5]);
-        rhs(varphi + c7 * h, Qt, Phit, k, k_Q[6], k_Phi[6],H);
+        Qt = Q + h * (
+            35.0 / 384.0 * k_Q[0] + 500.0 / 1113.0 * k_Q[2]
+            + 125.0 / 192.0 * k_Q[3] - 2187.0 / 6784.0 * k_Q[4]
+            + 11.0 / 84.0 * k_Q[5]);
+        Phit = Phi + h * (
+            35.0 / 384.0 * k_Phi[0] + 500.0 / 1113.0 * k_Phi[2]
+            + 125.0 / 192.0 * k_Phi[3] - 2187.0 / 6784.0 * k_Phi[4]
+            + 11.0 / 84.0 * k_Phi[5]);
+        rhs(varphi + h, Qt, Phit, k, k_Q[6], k_Phi[6], H);
 
-        // 5th-order solution (you can also compute 4th for adaptive step control)
-        Q += h * (35.0/384.0 * k_Q[0] + 500.0/1113.0 * k_Q[2]
-                + 125.0/192.0 * k_Q[3] - 2187.0/6784.0 * k_Q[4]
-                + 11.0/84.0 * k_Q[5]);
+        // Final 5th-order update
+        Q += h * (
+            35.0 / 384.0 * k_Q[0] + 500.0 / 1113.0 * k_Q[2]
+            + 125.0 / 192.0 * k_Q[3] - 2187.0 / 6784.0 * k_Q[4]
+            + 11.0 / 84.0 * k_Q[5]);
 
-        Phi += h * (35.0/384.0 * k_Phi[0] + 500.0/1113.0 * k_Phi[2]
-                + 125.0/192.0 * k_Phi[3] - 2187.0/6784.0 * k_Phi[4]
-                + 11.0/84.0 * k_Phi[5]);
+        Phi += h * (
+            35.0 / 384.0 * k_Phi[0] + 500.0 / 1113.0 * k_Phi[2]
+            + 125.0 / 192.0 * k_Phi[3] - 2187.0 / 6784.0 * k_Phi[4]
+            + 11.0 / 84.0 * k_Phi[5]);
 
         varphi += h;
     }
@@ -244,6 +243,209 @@ __device__ void rk45_solver(
     final_Q = Q;
     final_Phi = Phi;
 }
+
+__device__ void rk45_adaptive_solver(
+    double k,
+    double& final_Q,
+    double& final_Phi,
+    double initial_Q,
+    double initial_Phi,
+    double H,
+    double varphi0,
+    double varphi_end,
+    double h_init,
+    double tol
+) {
+    double Q = initial_Q;
+    double Phi = initial_Phi;
+    double varphi = varphi0;
+    double h = h_init;
+
+    const double SAFETY = 0.9;
+    const double MIN_SCALE = 0.2;
+    const double MAX_SCALE = 5.0;
+
+    // Dormand–Prince coefficients
+    const double b1 = 35.0/384.0, b2 = 0.0, b3 = 500.0/1113.0,
+                 b4 = 125.0/192.0, b5 = -2187.0/6784.0, b6 = 11.0/84.0;
+
+    const double b1s = 5179.0/57600.0, b3s = 7571.0/16695.0,
+                 b4s = 393.0/640.0, b5s = -92097.0/339200.0,
+                 b6s = 187.0/2100.0, b7s = 1.0/40.0;
+
+    const double c2 = 1.0/5.0, c3 = 3.0/10.0, c4 = 4.0/5.0, c5 = 8.0/9.0;
+
+    double k_Q[7], k_Phi[7];
+    double Qt, Phit;
+
+    while (varphi < varphi_end) {
+        // Stage 1
+        rhs(varphi, Q, Phi, k, k_Q[0], k_Phi[0], H);
+
+        // Stage 2
+        rhs(varphi + c2 * h,
+            Q + h * (1.0/5.0) * k_Q[0],
+            Phi + h * (1.0/5.0) * k_Phi[0],
+            k, k_Q[1], k_Phi[1], H);
+
+        // Stage 3
+        rhs(varphi + c3 * h,
+            Q + h * (3.0/40.0 * k_Q[0] + 9.0/40.0 * k_Q[1]),
+            Phi + h * (3.0/40.0 * k_Phi[0] + 9.0/40.0 * k_Phi[1]),
+            k, k_Q[2], k_Phi[2], H);
+
+        // Stage 4
+        rhs(varphi + c4 * h,
+            Q + h * (44.0/45.0 * k_Q[0] - 56.0/15.0 * k_Q[1] + 32.0/9.0 * k_Q[2]),
+            Phi + h * (44.0/45.0 * k_Phi[0] - 56.0/15.0 * k_Phi[1] + 32.0/9.0 * k_Phi[2]),
+            k, k_Q[3], k_Phi[3], H);
+
+        // Stage 5
+        rhs(varphi + c5 * h,
+            Q + h * (19372.0/6561.0 * k_Q[0] - 25360.0/2187.0 * k_Q[1]
+                  + 64448.0/6561.0 * k_Q[2] - 212.0/729.0 * k_Q[3]),
+            Phi + h * (19372.0/6561.0 * k_Phi[0] - 25360.0/2187.0 * k_Phi[1]
+                   + 64448.0/6561.0 * k_Phi[2] - 212.0/729.0 * k_Phi[3]),
+            k, k_Q[4], k_Phi[4], H);
+
+        // Stage 6
+        rhs(varphi + h,
+            Q + h * (9017.0/3168.0 * k_Q[0] - 355.0/33.0 * k_Q[1]
+                  + 46732.0/5247.0 * k_Q[2] + 49.0/176.0 * k_Q[3]
+                  - 5103.0/18656.0 * k_Q[4]),
+            Phi + h * (9017.0/3168.0 * k_Phi[0] - 355.0/33.0 * k_Phi[1]
+                  + 46732.0/5247.0 * k_Phi[2] + 49.0/176.0 * k_Phi[3]
+                  - 5103.0/18656.0 * k_Phi[4]),
+            k, k_Q[5], k_Phi[5], H);
+
+        // Stage 7 (for 4th-order estimate)
+        rhs(varphi + h,
+            Q + h * (35.0/384.0 * k_Q[0] + 500.0/1113.0 * k_Q[2]
+                  + 125.0/192.0 * k_Q[3] - 2187.0/6784.0 * k_Q[4]
+                  + 11.0/84.0 * k_Q[5]),
+            Phi + h * (35.0/384.0 * k_Phi[0] + 500.0/1113.0 * k_Phi[2]
+                  + 125.0/192.0 * k_Phi[3] - 2187.0/6784.0 * k_Phi[4]
+                  + 11.0/84.0 * k_Phi[5]),
+            k, k_Q[6], k_Phi[6], H);
+
+        // Compute 5th and 4th order solutions
+        double Q5 = Q + h * (b1 * k_Q[0] + b3 * k_Q[2] + b4 * k_Q[3] + b5 * k_Q[4] + b6 * k_Q[5]);
+        double Phi5 = Phi + h * (b1 * k_Phi[0] + b3 * k_Phi[2] + b4 * k_Phi[3] + b5 * k_Phi[4] + b6 * k_Phi[5]);
+
+        double Q4 = Q + h * (b1s * k_Q[0] + b3s * k_Q[2] + b4s * k_Q[3] + b5s * k_Q[4] + b6s * k_Q[5] + b7s * k_Q[6]);
+        double Phi4 = Phi + h * (b1s * k_Phi[0] + b3s * k_Phi[2] + b4s * k_Phi[3] + b5s * k_Phi[4] + b6s * k_Phi[5] + b7s * k_Phi[6]);
+
+        // Estimate local error
+        double err_Q = fabs(Q5 - Q4);
+        double err_Phi = fabs(Phi5 - Phi4);
+        double err = fmax(err_Q, err_Phi);
+
+        if (err <= tol) {
+            // Accept step
+            Q = Q5;
+            Phi = Phi5;
+            varphi += h;
+        }
+
+        // Update step size
+        double scale = SAFETY * pow(tol / (err + 1e-12), 0.2); // +ε to avoid div by zero
+        scale = fmin(fmax(scale, MIN_SCALE), MAX_SCALE);
+        h *= scale;
+
+        // Prevent overshooting
+        if (varphi + h > varphi_end)
+            h = varphi_end - varphi;
+    }
+
+    final_Q = Q;
+    final_Phi = Phi;
+}
+
+// __device__ void rk45_solver(
+//     double k, double& final_Q, double& final_Phi,
+//     double initial_Q, double initial_Phi, double H
+// ) {
+
+//     double h = d_params.h;
+//     double phi_start = d_params.phi_start;    	
+//     //double phi_end = d_params.phi_end;    	
+//     int steps = d_params.steps;    	
+
+//     double Q = initial_Q, Phi = initial_Phi;
+//     double varphi = phi_start;
+
+//     double k_Q[7], k_Phi[7];
+//     double Qt, Phit;
+
+//     // c values (nodes)
+//     double c2 = 1.0 / 5.0;
+//     double c3 = 3.0 / 10.0;
+//     double c4 = 4.0 / 5.0;
+//     double c5 = 8.0 / 9.0;
+//     double c6 = 1.0;
+//     double c7 = 1.0;
+
+
+//     for (int i = 0; i < steps; ++i) {
+//         // a coefficients
+//         // Stage 1 (no a's)
+//         rhs(varphi, Q, Phi, k, k_Q[0], k_Phi[0],H);
+
+//         // Stage 2
+//         Qt = Q + h * (1.0 / 5.0) * k_Q[0];
+//         Phit = Phi + h * (1.0 / 5.0) * k_Phi[0];
+//         rhs(varphi + c2 * h, Qt, Phit, k, k_Q[1], k_Phi[1],H);
+
+//         // Stage 3
+//         Qt = Q + h * (3.0/40.0 * k_Q[0] + 9.0/40.0 * k_Q[1]);
+//         Phit = Phi + h * (3.0/40.0 * k_Phi[0] + 9.0/40.0 * k_Phi[1]);
+//         rhs(varphi + c3 * h, Qt, Phit, k, k_Q[2], k_Phi[2],H);
+
+//         // Stage 4
+//         Qt = Q + h * (44.0/45.0 * k_Q[0] - 56.0/15.0 * k_Q[1] + 32.0/9.0 * k_Q[2]);
+//         Phit = Phi + h * (44.0/45.0 * k_Phi[0] - 56.0/15.0 * k_Phi[1] + 32.0/9.0 * k_Phi[2]);
+//         rhs(varphi + c4 * h, Qt, Phit, k, k_Q[3], k_Phi[3],H);
+
+//         // Stage 5
+//         Qt = Q + h * (19372.0/6561.0 * k_Q[0] - 25360.0/2187.0 * k_Q[1]
+//                    + 64448.0/6561.0 * k_Q[2] - 212.0/729.0 * k_Q[3]);
+//         Phit = Phi + h * (19372.0/6561.0 * k_Phi[0] - 25360.0/2187.0 * k_Phi[1]
+//                    + 64448.0/6561.0 * k_Phi[2] - 212.0/729.0 * k_Phi[3]);
+//         rhs(varphi + c5 * h, Qt, Phit, k, k_Q[4], k_Phi[4],H);
+
+//         // Stage 6
+//         Qt = Q + h * (9017.0/3168.0 * k_Q[0] - 355.0/33.0 * k_Q[1]
+//                    + 46732.0/5247.0 * k_Q[2] + 49.0/176.0 * k_Q[3]
+//                    - 5103.0/18656.0 * k_Q[4]);
+//         Phit = Phi + h * (9017.0/3168.0 * k_Phi[0] - 355.0/33.0 * k_Phi[1]
+//                    + 46732.0/5247.0 * k_Phi[2] + 49.0/176.0 * k_Phi[3]
+//                    - 5103.0/18656.0 * k_Phi[4]);
+//         rhs(varphi + c6 * h, Qt, Phit, k, k_Q[5], k_Phi[5],H);
+
+//         // Stage 7
+//         Qt = Q + h * (35.0/384.0 * k_Q[0] + 0.0 * k_Q[1] + 500.0/1113.0 * k_Q[2]
+//                    + 125.0/192.0 * k_Q[3] - 2187.0/6784.0 * k_Q[4]
+//                    + 11.0/84.0 * k_Q[5]);
+//         Phit = Phi + h * (35.0/384.0 * k_Phi[0] + 0.0 * k_Phi[1] + 500.0/1113.0 * k_Phi[2]
+//                    + 125.0/192.0 * k_Phi[3] - 2187.0/6784.0 * k_Phi[4]
+//                    + 11.0/84.0 * k_Phi[5]);
+//         rhs(varphi + c7 * h, Qt, Phit, k, k_Q[6], k_Phi[6],H);
+
+//         // 5th-order solution (you can also compute 4th for adaptive step control)
+//         Q += h * (35.0/384.0 * k_Q[0] + 500.0/1113.0 * k_Q[2]
+//                 + 125.0/192.0 * k_Q[3] - 2187.0/6784.0 * k_Q[4]
+//                 + 11.0/84.0 * k_Q[5]);
+
+//         Phi += h * (35.0/384.0 * k_Phi[0] + 500.0/1113.0 * k_Phi[2]
+//                 + 125.0/192.0 * k_Phi[3] - 2187.0/6784.0 * k_Phi[4]
+//                 + 11.0/84.0 * k_Phi[5]);
+
+//         varphi += h;
+//     }
+
+//     final_Q = Q;
+//     final_Phi = Phi;
+// }
 
 __device__ void ode_solver(double k, double& final_Q, double& final_Phi, double initial_Q, double initial_Phi, double H)
 {
@@ -255,6 +457,8 @@ __device__ void ode_solver(double k, double& final_Q, double& final_Phi, double 
     rk6_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
     #elif defined(RK45)
     rk45_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
+    #elif defined(RK45_ADAPTIVE)
+    rk45_adaptive_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
     #endif
 }
 
@@ -353,6 +557,18 @@ int main(int argc, char **argv) {
     std::cout << "C = " << C << std::endl;
     std::cout << "h = " << h << std::endl;
     std::cout << "steps = " << steps << std::endl;
+
+    #ifdef RK4
+    std::cout << "Using RK4 solver" << std::endl;    
+    #elif defined(EULER)
+    std::cout << "Using Euler solver" << std::endl;
+    #elif defined(RK6)
+    std::cout << "Using RK6 solver" << std::endl;
+    #elif defined(RK45)
+    std::cout << "Using RK45 solver" << std::endl;
+    #elif defined(RK45_ADAPTIVE)
+    std::cout << "Using RK45 Adaptive solver" << std::endl;
+    #endif
 
 
 /*
