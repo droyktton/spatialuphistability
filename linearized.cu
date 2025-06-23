@@ -33,7 +33,7 @@ struct MyParams {
 
 __constant__ MyParams d_params;
 
-#define RK4
+//#define RK4
 
 //const int steps = 100000;
 //const double h = (phi_end - phi_start) / steps;
@@ -251,15 +251,14 @@ __device__ void rk45_adaptive_solver(
     double initial_Q,
     double initial_Phi,
     double H,
-    double varphi0,
-    double varphi_end,
     double h_init,
     double tol
 ) {
     double Q = initial_Q;
     double Phi = initial_Phi;
-    double varphi = varphi0;
+    double varphi = d_params.phi_start;
     double h = h_init;
+    double varphi_end = d_params.phi_end;
 
     const double SAFETY = 0.9;
     const double MIN_SCALE = 0.2;
@@ -457,7 +456,7 @@ __device__ void ode_solver(double k, double& final_Q, double& final_Phi, double 
     #elif defined(RK45)
     rk45_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
     #elif defined(RK45_ADAPTIVE)
-    rk45_adaptive_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H);
+    rk45_adaptive_solver(k, final_Q, final_Phi, initial_Q, initial_Phi, H, 1.e-6, 1.e-5);
     #endif
 }
 

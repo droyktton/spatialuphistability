@@ -14,7 +14,7 @@ FLAGS = --expt-extended-lambda -lcufft -std=c++14 -lstdc++fs \
 #-gencode arch=compute_89,code=sm_89 
 
 
-PARAMS = -DRK45 #-DRK45_ADAPTIVE  
+PARAMS = -DRK45_ADAPTIVE #-DRK4 #-DRK45 # #   
 
 LDFLAGS = -L/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/math_libs/12.2/lib64 
 
@@ -24,7 +24,7 @@ spatialuphistability: linearized.cu
 
 
 update_git:
-	git add *.cu Makefile README.md *.gnu *.sh *.h *.cuh; git commit -m "program update"; git push
+	git add *.cu Makefile README.md *.gnu *.sh; git commit -m "program update"; git push
 
 clean:
 	rm spatialuphistability 
